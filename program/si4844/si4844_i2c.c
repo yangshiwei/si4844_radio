@@ -1,26 +1,26 @@
 #include "si4844_i2c.h"
+#include "delay.h"
+#include "C8051F340.h"
 /*****************************************************************************/
-#define I2C_READ    1
-#define I2C_WRITE   0
-#define I2C_CLK_CYCLE   10
-#define DELAY_FOR_I2C_CYCLE     wait_us(I2C_CLK_CYCLE);
+#define I2C_READ    			1
+#define I2C_WRITE   			0
+#define I2C_CLK_CYCLE   		10
+#define DELAY_FOR_I2C_CYCLE     DelayUs(I2C_CLK_CYCLE);
 #define CONFIG_SDIO_INPUT       SDIO = 1;
-#define IO2W_ADDRESS 0x22
+#define SI4844_ADDRESS 			0x22
 /*****************************************************************************/
-sbit SDIO        = P0^2;  // Routed to SDIO on the Si47xx Part
-sbit SCLK        = P0^3;  // Routed to SCLK on the Si47xx Part
-sbit RSTB        = P0^6;  // Routed to RSTB on the baseboard
-//-----------------------------------------------------------------------------
-// Reset the Si47xx and select the appropriate bus mode.
-//-----------------------------------------------------------------------------
+sbit SDIO = P0^2;// Routed to SDIO on the Si47xx Part
+sbit SCLK = P0^3;// Routed to SCLK on the Si47xx Part
+sbit RSTB = P0^6;// Routed to RSTB on the baseboard
+/*****************************************************************************/
 void i2c_reset(void)
-{ 
+{//Reset the Si47xx and select the appropriate bus mode. 
         SDIO = 1;
         SCLK = 1;
         RSTB = 0;
-        wait_us(200);
+        DelayUs(200);
         RSTB = 1; 
-        wait_us(200);
+        DelayUs(200);
 }
 /******************************************************************************
  * put the chip into the reset mode
@@ -28,7 +28,7 @@ void i2c_reset(void)
 void i2c_reset_disable(void)
 {
         RSTB = 0;
-        wait_us(200);
+        DelayUs(200);
 }
 /******************************************************************************
  * take the chip out of the reset mode
@@ -38,7 +38,7 @@ void i2c_reset_enable(void)
         SDIO = 1;
         SCLK = 1;
         RSTB = 1;
-        //wait_us(200);
+        DelayUs(200);
 }
 //-----------------------------------------------------------------------------
 // This routine send a stop condition
@@ -69,9 +69,9 @@ void i2c_start(void)
 // Inputs:
 //       buf: The data to write
 //-----------------------------------------------------------------------------
-void i2c_write_byte(u8 wrbuf)
+void i2c_write_byte(U8 wrbuf)
 {
-        u8 i;
+        U8 i;
         
         for (i=0; i < 8; i++) {
                 DELAY_FOR_I2C_CYCLE
@@ -98,7 +98,7 @@ void i2c_write_byte(u8 wrbuf)
 //       addr: the address to write
 //       rdwr: read or write
 //-----------------------------------------------------------------------------
-void i2c_address(u8 addr,u8 rdwr)
+void i2c_address(U8 addr,U8 rdwr)
 {       
         i2c_start();
         if(rdwr == I2C_READ) 
@@ -113,10 +113,10 @@ void i2c_address(u8 addr,u8 rdwr)
 // return:
 //       the data read from device
 //-----------------------------------------------------------------------------
-u8 i2c_read_byte(void)
+U8 i2c_read_byte(void)
 {
-        u8 i;
-        u8 buf;   
+        U8 i;
+        U8 buf;   
         CONFIG_SDIO_INPUT 
         for (i = 0; i < 8; i++) {
                 DELAY_FOR_I2C_CYCLE 
@@ -162,10 +162,10 @@ void i2c_send_nack(void)
 //      buf: the buffer in where the data is saved
 //
 //-----------------------------------------------------------------------------
-void i2c_read_buf(u8 len, u8 idata *buf)
+void i2c_read_buf(U8 len, U8 idata *buf)
 {
-        u8 i = 0;       
-        i2c_address(IO2W_ADDRESS,I2C_READ);
+        U8 i = 0;       
+        i2c_address(SI4844_ADDRESS,I2C_READ);
         while( i < len) {
                 buf[i++] = i2c_read_byte();
                 if( i < len) {
@@ -181,14 +181,12 @@ void i2c_read_buf(u8 len, u8 idata *buf)
 //              len: number of bytes to write
 //              buf: data to be write
 //-----------------------------------------------------------------------------
-void i2c_write_buf(u8 len, u8 idata *buf)
+void i2c_write_buf(U8 len, U8 idata *buf)
 {
-        u8 i;
-        i2c_address(IO2W_ADDRESS,I2C_WRITE);
+        U8 i;
+        i2c_address(SI4844_ADDRESS,I2C_WRITE);
         for (i = 0; i < len; i++) {
                 i2c_write_byte(buf[i]);
         }
         i2c_stop();  // Stop condition  
 }
-
-

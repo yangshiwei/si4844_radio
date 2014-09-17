@@ -1,11 +1,11 @@
 /*************************************************************************
  * this file include the functions of write or read command
- * void atdd_power_up(u8 band_select_mode,u8 band_index)
+ * void atdd_power_up(U8 band_select_mode,U8 band_index)
  * void atdd_power_down(void)
  * void atdd_set_property(u16 property_id,u16 property_value);
  * u16 atdd_get_property(u16 property_id);
  * void atdd_wait_cts(void);
- * void atdd_command(u8 cmd_size,u8 idata *cmd_buf,u8 replay_size,u8 idata *reply);
+ * void atdd_command(U8 cmd_size,U8 idata *cmd_buf,U8 replay_size,U8 idata *reply);
  * ***************************************************************************/
 #include "si4844_clockradio.h"
 #include "si4844_i2c.h"
@@ -44,29 +44,58 @@
 #define	SM_RADIO_READY 0x80
 #define	SM_RADIO_RESET 0x81
 #define	SM_RADIO_POWERUP 0x82
+
+/*********************************************************************
+ * this function initial the tuner after powerup command
+ * *******************************************************************/
+#define FM_BAND_TOP     10900
+#define FM_BAND_BOTTOM  8750
+#define FM_BAND_SPACING 10
+
+#define AM_BAND_TOP     1710
+#define AM_BAND_BOTTOM  522
+#define AM_BAND_SPACING 9
+
+#define SW_BAND_TOP     26500
+#define SW_BAND_BOTTOM  2300
+#define SW_BAND_SPACING 5
+/***************************************************
+ * config fm band
+ * if select host setting mode, user can initial the 
+ *      de-emphasis
+ *      blend_mono,band_stereo,band_separation
+ * *************************************************/
+#define ADJPT_STERRO_DISABLE 0
+#define FM_ADJPT_ATTENUATION_DISABLE 0
+#define FM_AUDIO_MODE 3
+#define FM_FORCE_MONO 0
+//1:de-emphasis 50us
+//2:de-emphasis 75us
+#define FM_DE_EMPHASIS 2
+#define FM_BLEND_MONO  8
+#define FM_BLEND_STEREO 49
+#define FM_SEPARATION 0x9F
 /*******************************************************************
  * define some global variable
  * ***************************************************************/
 
-u8 state_machine;
-u8 band_index;
-u8 band_mode;
-u8 flag_tuner_irq;
-u8 flag_station;
-u8 flag_stereo;
-u8 freq_bcd[2];
-const u8 code max_vol_list[9] = {59,60,61,62,63,62,61,60,59};
-u8 max_vol;
+U8 state_machine;
+U8 band_index;
+U8 band_mode;
+U8 flag_tuner_irq;
+U8 flag_station;
+U8 flag_stereo;
+U8 freq_bcd[2];
+const U8 code max_vol_list[9] = {59,60,61,62,63,62,61,60,59};
+U8 max_vol;
 bit flag_host_band;
 bit flag_tuner_pri;
-u8 fm_bass_treble;
-u8 am_bass_treble;
-u8 vol;
-/*********************************************************************
- * this isr set a flag, but get atdd status in main loop
- * *******************************************************************/
+U8 fm_bass_treble;
+U8 am_bass_treble;
+U8 vol;
+/*****************************************************************************/
 void isr_irq() interrupt 0
-{
+{//this isr set a flag, but get atdd status in main loop
         if(state_machine & SM_RADIO_READY) {
                 flag_tuner_irq = 1;
         }
@@ -102,7 +131,7 @@ void adjust_band(void)
 /**********************************************************************************
  * this function adjust volume
  * *******************************************************************************/
-void adjust_volume(u8 direction)
+void adjust_volume(U8 direction)
 {
         if(state_machine & SM_RADIO_READY) {
                 if (direction == 0) {
@@ -121,7 +150,7 @@ void adjust_volume(u8 direction)
 /***************************************************************
  * this function adjust bass treble
  * ************************************************************/
-void adjust_bass_treble(u8 direction)
+void adjust_bass_treble(U8 direction)
 {
         if(state_machine & SM_RADIO_READY) {
                 if (direction == 0) {
@@ -142,12 +171,9 @@ void adjust_bass_treble(u8 direction)
  * **********************************************************************/
 void parse_atdd_status()
 {
-        u8 idata atdd_status[4];
-        
+        U8 idata atdd_status[4];     
 		if( flag_tuner_irq ) {
-    
 			flag_tuner_irq = 0;
-        
                 atdd_get_status(atdd_status);
                 // STATUS.4 1--> BAND INDEX AND FREQUENCY INFO IS READY
                 if(atdd_status[0] & INFORDY) {
@@ -198,20 +224,6 @@ void parse_atdd_status()
         }
 }
 
-/*********************************************************************
- * this function initial the tuner after powerup command
- * *******************************************************************/
-#define FM_BAND_TOP     10900
-#define FM_BAND_BOTTOM  8750
-#define FM_BAND_SPACING 10
-
-#define AM_BAND_TOP     1710
-#define AM_BAND_BOTTOM  522
-#define AM_BAND_SPACING 9
-
-#define SW_BAND_TOP     26500
-#define SW_BAND_BOTTOM  2300
-#define SW_BAND_SPACING 5
 void config_tune(void)
 {
         if( band_mode == FM) {
@@ -296,10 +308,10 @@ void config_sw()
 //-----------------------------------------------------------------------------
 // Take the tuner out of powerdown mode.
 //-----------------------------------------------------------------------------
-void atdd_power_up(u8 xoscen,u8 xowait,u8 band_index,u16 band_bottom,u16 band_top,u8 chspc)
+void atdd_power_up(U8 xoscen,U8 xowait,U8 band_index,u16 band_bottom,u16 band_top,U8 chspc)
 {
-	u8 idata cmd[7];   
-        u8 len;        
+	U8 idata cmd[7];   
+        U8 len;        
         cmd[0] = ATDD_POWER_UP;  //ATDD powerup command
         cmd[1] = band_index;
         if( xoscen ) {
@@ -325,9 +337,9 @@ void atdd_power_up(u8 xoscen,u8 xowait,u8 band_index,u16 band_bottom,u16 band_to
  * This function set the audio mode,fm force mono,+/-100K-adjance channel attenuation mode
  * and +/-100k-adjance channel stereo status
  * *****************************************************************************/
-void atdd_audio_mode(u8 adj_st,u8 adj_attn,u8 force_mono,u8 audio_mode)
+void atdd_audio_mode(U8 adj_st,U8 adj_attn,U8 force_mono,U8 audio_mode)
 {
-        u8 idata cmd[2];
+        U8 idata cmd[2];
         cmd[0] = ATDD_AUDIO_MODE;
         cmd[1] = audio_mode;
         if(adj_st) {
@@ -345,9 +357,9 @@ void atdd_audio_mode(u8 adj_st,u8 adj_attn,u8 force_mono,u8 audio_mode)
  * get atdd status,such as host reset requied,host power up required
  * bandindex/frequency info valid bit,stereo status,station indicator
  * ***************************************************************************/
-void atdd_get_status(u8 idata * rspbuf)
+void atdd_get_status(U8 idata * rspbuf)
 {
-        u8 idata cmd;
+        U8 idata cmd;
         //get atdd status and analyze them 
         cmd = ATDD_GET_STATUS;
         write_command(1,&cmd,4,rspbuf); 
@@ -355,7 +367,7 @@ void atdd_get_status(u8 idata * rspbuf)
 /****************************************************************************
  * this function set the volume 
  * **************************************************************************/
-void atdd_set_volume(u8 volume)
+void atdd_set_volume(U8 volume)
 {
         set_property(0x4000,volume);
 }
@@ -376,17 +388,17 @@ void atdd_set_volume(u8 volume)
 #ifndef enable_get_property_command
 #define enable_get_property_command
 #endif
-u8 atdd_get_actual_vol()
+U8 atdd_get_actual_vol()
 {
-        u8 actual_vol;
-        actual_vol = (u8) get_property(0x4003);
+        U8 actual_vol;
+        actual_vol = (U8) get_property(0x4003);
         return actual_vol;
 }
 #endif
 /****************************************************************************
  * this function set the bass/treble
  * **************************************************************************/
-void atdd_set_bass_treble(u8 tone)
+void atdd_set_bass_treble(U8 tone)
 {
         set_property(0x4002,tone);
         #if FM_AUDIO_MODE == 3
@@ -399,63 +411,63 @@ void atdd_set_bass_treble(u8 tone)
 /****************************************************************************
  * this function set fm deemphasis,10B--> 75us,01B-->50us
  * **************************************************************************/
-void atdd_set_deemphasis(u8 deemphasis)
+void atdd_set_deemphasis(U8 deemphasis)
 {
         set_property(0x1100,deemphasis);
 }
 /****************************************************************************
  * this function set fm softmute rate.
  * **************************************************************************/
-void atdd_set_fm_softmute_rate(u8 rate)
+void atdd_set_fm_softmute_rate(U8 rate)
 {
         set_property(0x1300,rate);
 }
 /****************************************************************************
  * this function set fm softmute slope.
  * **************************************************************************/
-void atdd_set_fm_softmute_slope(u8 slope)
+void atdd_set_fm_softmute_slope(U8 slope)
 {
         set_property(0x1301,slope);
 }
 /****************************************************************************
  * this function set fm softmute max attenuation
  * **************************************************************************/
-void atdd_set_fm_softmute_max_attenuation(u8 max_attn)
+void atdd_set_fm_softmute_max_attenuation(U8 max_attn)
 {
         set_property(0x1302,max_attn);
 }
 /****************************************************************************
  * this function set fm softmute snr threshold
  * **************************************************************************/
-void atdd_set_fm_softmute_snr(u8 snr)
+void atdd_set_fm_softmute_snr(U8 snr)
 {
         set_property(0x1303,snr);
 }
 /****************************************************************************
  * this function set am softmute rate.
  * **************************************************************************/
-void atdd_set_am_softmute_rate(u8 rate)
+void atdd_set_am_softmute_rate(U8 rate)
 {
         set_property(0x3300,rate);
 }
 /****************************************************************************
  * this function set am softmute slope.
  * **************************************************************************/
-void atdd_set_am_softmute_slope(u8 slope)
+void atdd_set_am_softmute_slope(U8 slope)
 {
         set_property(0x3301,slope);
 }
 /****************************************************************************
  * this function set am softmute max attenuation
  * **************************************************************************/
-void atdd_set_am_softmute_max_attenuation(u8 max_attn)
+void atdd_set_am_softmute_max_attenuation(U8 max_attn)
 {
         set_property(0x3302,max_attn);
 }
 /****************************************************************************
  * this function set am softmute snr threshold
  * **************************************************************************/
-void atdd_set_am_softmute_snr(u8 snr)
+void atdd_set_am_softmute_snr(U8 snr)
 {
         set_property(0x3303,snr);
 }
@@ -469,7 +481,7 @@ void atdd_set_am_softmute_snr(u8 snr)
  *                      (blend_stereo-blend_mono) * 
  *                      (separation - 128);
  * **************************************************************************/
-void atdd_set_stereo_separation(u8 separation)
+void atdd_set_stereo_separation(U8 separation)
 {
         set_property(0x1207,separation);
 }
@@ -482,7 +494,7 @@ void atdd_set_stereo_separation(u8 separation)
  *                      (blend_stereo-blend_mono) * 
  *                      (separation - 128);
  * **************************************************************************/
-void atdd_set_rssi_blend_mono(u8 blend_mono)
+void atdd_set_rssi_blend_mono(U8 blend_mono)
 {
         set_property(0x1801,blend_mono);
 }
@@ -495,7 +507,7 @@ void atdd_set_rssi_blend_mono(u8 blend_mono)
  *                      (blend_stereo-blend_mono) * 
  *                      (separation - 128);
  * **************************************************************************/
-void atdd_set_rssi_blend_stereo(u8 blend_stereo)
+void atdd_set_rssi_blend_stereo(U8 blend_stereo)
 {
         set_property(0x1800,blend_stereo);
 }
@@ -508,24 +520,24 @@ void atdd_set_rssi_blend_stereo(u8 blend_stereo)
 //-----------------------------------------------------------------------------
 void set_property(u16 property_id,u16 property_value)
 {
-        u8 idata cmd[6];
+        U8 idata cmd[6];
         cmd[0] = 0x12;
         cmd[1] = 0;
-        cmd[2] = (u8)(property_id >> 8);
-        cmd[3] = (u8)(property_id);
-        cmd[4] = (u8)(property_value >> 8);
-        cmd[5] = (u8)(property_value);
+        cmd[2] = (U8)(property_id >> 8);
+        cmd[3] = (U8)(property_id);
+        cmd[4] = (U8)(property_value >> 8);
+        cmd[5] = (U8)(property_value);
         write_command(6, cmd, 0, NULL);
 }
 #ifdef  enable_get_property_command
 u16 get_property(u16 property_id)
 {
-        u8 idata cmd[4];
-        u8 idata rsp[4];
+        U8 idata cmd[4];
+        U8 idata rsp[4];
         cmd[0] = 0x13;
         cmd[1] = 0;
-        cmd[2] = (u8)(property_id >> 8);
-        cmd[3] = (u8)(property_id);
+        cmd[2] = (U8)(property_id >> 8);
+        cmd[3] = (U8)(property_id);
         write_command(4, cmd,4, rsp);
         return (u16)(rsp[2]<<8+rsp[3]);
 }
@@ -536,8 +548,8 @@ u16 get_property(u16 property_id)
 #ifdef  enable_get_version_command
 void atdd_get_version()
 {
-        u8 idata cmd[1];
-        u8 idata rsp[9];
+        U8 idata cmd[1];
+        U8 idata rsp[9];
         cmd[0] = 0x10;
         write_command(1, cmd, 9, rsp);
 }
@@ -548,7 +560,7 @@ void atdd_get_version()
 #ifdef  enable_power_down_command
 void atdd_power_down(void)
 {
-        u8 idata cmd;
+        U8 idata cmd;
         cmd = ATDD_POWER_DOWN;
         write_command(1,&cmd,0,NULL);
 }
@@ -558,14 +570,14 @@ void atdd_power_down(void)
 //-----------------------------------------------------------------------------
 void wait_cts(void)
 {
-        u8 idata status;
-        u8 i=10;
+        U8 idata status;
+        U8 i=10;
         do {
                 wait_us(100);
                 i2c_read_buf(1,&status); 
         } while (!(status & 0x80) && i--);
 }
-void write_command(u8 cmd_size,u8 idata *cmd_buf,u8 reply_size,u8 idata *reply)
+void write_command(U8 cmd_size,U8 idata *cmd_buf,U8 reply_size,U8 idata *reply)
 {
         // It is always a good idea to check for cts prior to sending a command to the part.
         // Write the command to the part

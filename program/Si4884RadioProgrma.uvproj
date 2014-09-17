@@ -381,6 +381,18 @@
         </Group>
         <Group>
           <GroupName>SI4844</GroupName>
+          <Files>
+            <File>
+              <FileName>si4844_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\si4844\si4844_i2c.c</FilePath>
+            </File>
+            <File>
+              <FileName>si4844_clockradio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\si4844\si4844_clockradio.c</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>APP</GroupName>
