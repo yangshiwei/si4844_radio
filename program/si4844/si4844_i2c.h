@@ -14,4 +14,4 @@ void i2c_send_ack(void);
 void i2c_send_nack(void);
 void i2c_read_buf(U8 len, U8 idata *buf);
 void i2c_write_buf(U8 len, U8 idata *buf);
-//#endif
+#endif

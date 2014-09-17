@@ -36,7 +36,7 @@ void SPI_FLASH_SO(U8 value);
 void SPI_FLASH_CLK(U8 value);
 void FlashInit(void);
 U8 Write_8bit_FLASH(U8 value);
-void SPI_FLASH_BufferRead(U8* pBuffer, U32 ReadAddr, U16 NumByteToRead);
+void SPI_FLASH_BufferRead(U8* pBuffer, U32 ReadAddr, U32 NumByteToRead);
 /*****************************************************************************/
 void LCD_CS(U8 value);
 void LCD_RES(U8 value);

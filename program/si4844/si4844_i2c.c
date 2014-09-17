@@ -8,6 +8,7 @@
 #define DELAY_FOR_I2C_CYCLE     DelayUs(I2C_CLK_CYCLE);
 #define CONFIG_SDIO_INPUT       SDIO = 1;
 #define SI4844_ADDRESS 			0x22
+#define CONFIG_RESET_DELAY		200//200uS
 /*****************************************************************************/
 sbit SDIO = P0^2;// Routed to SDIO on the Si47xx Part
 sbit SCLK = P0^3;// Routed to SCLK on the Si47xx Part
@@ -15,53 +16,43 @@ sbit RSTB = P0^6;// Routed to RSTB on the baseboard
 /*****************************************************************************/
 void i2c_reset(void)
 {//Reset the Si47xx and select the appropriate bus mode. 
-        SDIO = 1;
-        SCLK = 1;
-        RSTB = 0;
-        DelayUs(200);
-        RSTB = 1; 
-        DelayUs(200);
+	SDIO = 1;
+	SCLK = 1;
+	RSTB = 0;
+	DelayUs(CONFIG_RESET_DELAY);
+	RSTB = 1; 
+	DelayUs(CONFIG_RESET_DELAY);
 }
-/******************************************************************************
- * put the chip into the reset mode
- ******************************************************************************/
 void i2c_reset_disable(void)
-{
-        RSTB = 0;
-        DelayUs(200);
+{//put the chip into the reset mode
+	RSTB = 0;
+	DelayUs(CONFIG_RESET_DELAY);
 }
-/******************************************************************************
- * take the chip out of the reset mode
- * ****************************************************************************/
 void i2c_reset_enable(void)
-{
-        SDIO = 1;
-        SCLK = 1;
-        RSTB = 1;
-        DelayUs(200);
+{//take the chip out of the reset mode
+	SDIO = 1;
+	SCLK = 1;
+	RSTB = 1;
+	DelayUs(CONFIG_RESET_DELAY);
 }
-//-----------------------------------------------------------------------------
-// This routine send a stop condition
-//-----------------------------------------------------------------------------
 void i2c_stop(void) 
-{
-        
-        SDIO = 0;
-        DELAY_FOR_I2C_CYCLE
-        SCLK = 1;
-        DELAY_FOR_I2C_CYCLE
-        SDIO = 1;
-        DELAY_FOR_I2C_CYCLE
+{// This routine send a stop condition      
+	SDIO = 0;
+	DELAY_FOR_I2C_CYCLE
+	SCLK = 1;
+	DELAY_FOR_I2C_CYCLE
+	SDIO = 1;
+	DELAY_FOR_I2C_CYCLE
 }
 /*****************************************************************************
  * this roution send a start condition
  * ***************************************************************************/
 void i2c_start(void)
 { 
-        SDIO = 0;
-        DELAY_FOR_I2C_CYCLE
-        SCLK = 0;
-		DELAY_FOR_I2C_CYCLE
+	SDIO = 0;
+	DELAY_FOR_I2C_CYCLE
+	SCLK = 0;
+	DELAY_FOR_I2C_CYCLE
 }
 //-----------------------------------------------------------------------------
 // This routine writes one byte of data
@@ -71,26 +62,27 @@ void i2c_start(void)
 //-----------------------------------------------------------------------------
 void i2c_write_byte(U8 wrbuf)
 {
-        U8 i;
-        
-        for (i=0; i < 8; i++) {
-                DELAY_FOR_I2C_CYCLE
-                SDIO = (wrbuf & 0x80);
-                wrbuf <<= 1;
-                DELAY_FOR_I2C_CYCLE 
-                SCLK = 1;
-                DELAY_FOR_I2C_CYCLE
-                SCLK = 0; 
-        }
-        CONFIG_SDIO_INPUT
-        DELAY_FOR_I2C_CYCLE        
-        SCLK = 1;
-        if( SDIO == 1 ) {
-			_nop_();
-        }
-        DELAY_FOR_I2C_CYCLE
-        SCLK = 0;
+	U8 i;
+	for (i=0; i < 8; i++) 
+	{
 		DELAY_FOR_I2C_CYCLE
+		SDIO = (wrbuf & 0x80);
+		wrbuf <<= 1;
+		DELAY_FOR_I2C_CYCLE 
+		SCLK = 1;
+		DELAY_FOR_I2C_CYCLE
+		SCLK = 0; 
+	}
+	CONFIG_SDIO_INPUT
+	DELAY_FOR_I2C_CYCLE        
+	SCLK = 1;
+	if( SDIO == 1 ) 
+	{
+		_nop_();
+	}
+	DELAY_FOR_I2C_CYCLE
+	SCLK = 0;
+	DELAY_FOR_I2C_CYCLE
 }
 //-----------------------------------------------------------------------------
 // This routine writes the device address and opereation type
@@ -190,3 +182,5 @@ void i2c_write_buf(U8 len, U8 idata *buf)
         }
         i2c_stop();  // Stop condition  
 }
+
+

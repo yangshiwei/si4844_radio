@@ -8,7 +8,6 @@ void wait_cts(void);
 void write_command(U8 cmd_size,U8 idata *cmd_buf,U8 replay_size,U8 idata *reply);
 void atdd_power_up(U8 xoscen,U8 xowait,U8 band_index,U16 band_bottom,U16 band_top,U8 chspc);
 void atdd_power_down(void);
-
 void atdd_get_status(U8 idata * rspbuf);
 void config_tune(void);
 void config_fm();
