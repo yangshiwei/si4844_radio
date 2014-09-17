@@ -25,29 +25,33 @@
 *
 * History: none;
 *
-*************************************************************************************/
-
+******************************************************************************/
 #ifndef __OLED_H__
 #define __OLED_H__
-
+#include "compiler_defs.h"
 #include "string.h"
-
-void LCD_CS(u8 value);
-void LCD_RES(u8 value);
-void LCD_RD(u8 value);
-void LCD_CLK(u8 value);
-void LCD_SDA(u8 value);
-void LCD_WData(u8 value);
-void TransData(u8 value,u8 RD);
-void PageSet(u8 page,u8 column);
+/*****************************************************************************/
+void SPI_FLASH_CS(U8 value);
+void SPI_FLASH_SO(U8 value);
+void SPI_FLASH_CLK(U8 value);
+void FlashInit(void);
+U8 Write_8bit_FLASH(U8 value);
+void SPI_FLASH_BufferRead(U8* pBuffer, U32 ReadAddr, U16 NumByteToRead);
+/*****************************************************************************/
+void LCD_CS(U8 value);
+void LCD_RES(U8 value);
+void LCD_RD(U8 value);
+void LCD_CLK(U8 value);
+void LCD_SDA(U8 value);
+void LCD_WData(U8 value);
+void TransData(U8 value,U8 RD);
+void PageSet(U8 page,U8 column);
 void LCDFill(unsigned char bmp_dat) ;
 void Lcdclear(void);
 void Lcd_Init(void);
-void LcdDisChar(u8 xPos,u8 yPos,u8 zknum,u8 *zkzip);
-u8 LcdDisplay_HZ(u8 xPos,u8 yPos,u8 *GBCodeptr);
-void LcdDisplay_Chinese(u8 xPos,u8 yPos,u8 *GBCodeptr);
-void LcdDisplay_char(u8 xPos,u8 yPos,u8 *GBCodeptr);
+void LcdDisChar(U8 xPos,U8 yPos,U8 zknum,U8 *zkzip);
+U8 LcdDisplay_HZ(U8 xPos,U8 yPos,U8 *GBCodeptr);
+void LcdDisplay_Chinese(U8 xPos,U8 yPos,U8 *GBCodeptr);
+void LcdDisplay_char(U8 xPos,U8 yPos,U8 *GBCodeptr);
 void Draw_BMP(unsigned char x0, y0,x1, y1,unsigned char BMP[]);
-
-
 #endif

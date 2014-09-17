@@ -8,6 +8,7 @@
  * void atdd_command(u8 cmd_size,u8 idata *cmd_buf,u8 replay_size,u8 idata *reply);
  * ***************************************************************************/
 #include "si4844_clockradio.h"
+#include "si4844_i2c.h"
 /*****************************************************************************/
 #define FM      0
 #define AM      1
@@ -68,6 +69,72 @@ void isr_irq() interrupt 0
 {
         if(state_machine & SM_RADIO_READY) {
                 flag_tuner_irq = 1;
+        }
+}
+/*****************************************************************************/
+/**********************************************************************************
+ * this function enter radio mode or exit radio
+ * *******************************************************************************/
+void switch_power()
+{
+        if(state_machine & SM_RADIO_READY) {
+                state_machine = SM_POWER_OFF;
+                i2c_reset_disable();
+        } else {
+                state_machine = SM_RADIO_RESET;
+                i2c_reset_enable();
+        }
+}
+/**********************************************************************************
+ * this function switch band
+ * *******************************************************************************/
+void adjust_band(void)
+{
+        if(state_machine & SM_RADIO_READY) {
+                band_index++;
+                if(band_index > 40) {
+                       band_index = 0;
+                } 
+                i2c_reset();
+                state_machine = SM_RADIO_RESET;        
+        }        
+}
+/**********************************************************************************
+ * this function adjust volume
+ * *******************************************************************************/
+void adjust_volume(u8 direction)
+{
+        if(state_machine & SM_RADIO_READY) {
+                if (direction == 0) {
+                        if(volume) {
+                                volume--;
+                        }
+                } else {
+                        if(volume < 63) {
+                                volume++;
+                        }
+                }
+                si48xx_set_volume(volume);
+                state_machine = SM_RADIO_VOLUME;     
+        }
+}
+/***************************************************************
+ * this function adjust bass treble
+ * ************************************************************/
+void adjust_bass_treble(u8 direction)
+{
+        if(state_machine & SM_RADIO_READY) {
+                if (direction == 0) {
+                        if(bass_treble) {
+                                bass_treble--;
+                        }
+                } else {
+                        if(bass_treble < 8) {
+                                bass_treble++;
+                        }
+                }
+                si48xx_set_bass_treble(bass_treble);
+                state_machine = SM_RADIO_BASS_TREBLE;     
         }
 }
 /************************************************************************

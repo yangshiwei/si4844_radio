@@ -35,12 +35,12 @@ void Port_IO_Init()
     // P0.7  -  Unassigned,  Open-Drain, Digital
 
     // P1.0  -  Unassigned,  Open-Drain, Digital
-    // P1.1  -  Unassigned,  Open-Drain, Digital
-    // P1.2  -  Unassigned,  Open-Drain, Digital
-    // P1.3  -  Unassigned,  Open-Drain, Digital
-    // P1.4  -  Unassigned,  Open-Drain, Digital
-    // P1.5  -  Unassigned,  Open-Drain, Digital
-    // P1.6  -  Unassigned,  Open-Drain, Digital
+    // P1.1  -  Unassigned,  Push-Pull,  Digital
+    // P1.2  -  Unassigned,  Push-Pull,  Digital
+    // P1.3  -  Unassigned,  Push-Pull,  Digital
+    // P1.4  -  Unassigned,  Push-Pull,  Digital
+    // P1.5  -  Unassigned,  Push-Pull,  Digital
+    // P1.6  -  Unassigned,  Push-Pull,  Digital
     // P1.7  -  Unassigned,  Open-Drain, Digital
 
     // P2.0  -  Unassigned,  Open-Drain, Digital
@@ -62,6 +62,7 @@ void Port_IO_Init()
     // P3.7  -  Unassigned,  Open-Drain, Digital
 
     P0MDOUT   = 0x40;
+    P1MDOUT   = 0x7E;
     P0SKIP    = 0x01;
     XBR1      = 0x40;
 }
@@ -94,3 +95,4 @@ void Init_Device(void)
     Oscillator_Init();
     Interrupts_Init();
 }
+

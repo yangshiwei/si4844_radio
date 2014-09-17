@@ -1,52 +1,99 @@
-/************************************************************************************
-*  Copyright (c), 2015, HelTec Automation Technology co.,LTD.
-*            All rights reserved.
-*
-* Http:    www.heltec.cn
-* Email:   cn.heltec@gmail.com
-* WebShop: heltec.taobao.com
-*
-* File name: OLED.c
-* Project  : HelTec
-* Processor: STC89C52
-* Compiler : Keil C51 V9.52.0.0
-* 
-* Author : Aaron.Lee
-* Version: 1.00
-* Date   : 2014.4.20
-* Email  : leehunter8801@gmail.com
-* Modification: none
-* 
-* Description: 惠利特自动化自制字库芯片的驱动文件，仅适用于惠利特自动化(Heltec.taobao.com)所售字库版OLED显示屏
-*
-* Others: none;
-*
-* Function List: --
-*
-* History: none;
-*
-*************************************************************************************/
-#include "OLED_Config.h"
 #include "OLED.h"
 #include "Delay.h"
-#include "OLED_Flash.h"
-void LCD_CS(u8 value)	  
+#include "C8051F340.h"
+/*****************************************************************************/
+#define LCD_X_Parameter			132//LCD宽度
+#define LCD_Y_Parameter			64//LCD高度
+#define ZK_InitAddr       		0x00000
+#define ASCII_InitAdd			0x8100
+/*****************************************************************************/
+sbit Lcd_SDA  = P1^5;//SDI
+sbit Lcd_CLK  = P1^6;//CLK
+sbit Lcd_RD   = P1^4;//D/C
+sbit Lcd_CS   = P1^3;//CS1
+sbit FLASH_CS = P1^1;//CS2
+sbit FLASH_SI = P1^2;//FSO
+/*****************************************************************************/
+void SPI_FLASH_CS(U8 value)
+{
+    FLASH_CS = value;
+}
+
+void SPI_FLASH_SO(U8 value)
+{
+    Lcd_SDA = value;
+}
+
+void SPI_FLASH_CLK(U8 value)
+{
+    Lcd_CLK = value;
+}
+
+void FlashInit(void)
+{
+	SPI_FLASH_CS(1);
+	SPI_FLASH_CLK(1);
+}
+U8 Write_8bit_FLASH(U8 value)
+{
+   U8 i;
+   U8 temp=0;
+   SPI_FLASH_CLK(1);
+   for(i=0;i<8;i++)
+   {
+	   SPI_FLASH_CLK(0);
+//	   DelayUs(2);
+	   if((value&0x80)==0x80)
+	       SPI_FLASH_SO(1);
+	   else
+	       SPI_FLASH_SO(0);
+	   value<<=1;
+//	   DelayUs(2);
+ 	   SPI_FLASH_CLK(1);
+//	   DelayUs(2);
+	   temp<<=1;
+	   if(FLASH_SI==1)
+	      temp++;
+   }
+   return(temp);
+}
+
+void SPI_FLASH_BufferRead(U8* pBuffer, U32 ReadAddr, U32 NumByteToRead)
+{
+	LCD_CS(1);
+	SPI_FLASH_CS(0);
+	Write_8bit_FLASH(0x03);
+	Write_8bit_FLASH((ReadAddr & 0xFF0000) >> 16);
+	Write_8bit_FLASH((ReadAddr& 0xFF00) >> 8);
+	Write_8bit_FLASH(ReadAddr & 0xFF);
+	
+	while(NumByteToRead--)
+	{
+		*pBuffer = Write_8bit_FLASH(0xA5);
+		pBuffer++;
+	}
+	
+	SPI_FLASH_CS(1);
+	LCD_CS(0);
+}
+/*****************************************************************************/
+void LCD_CS(U8 value)	  
 {
 	 Lcd_CS = value;
 }
-void LCD_RD(u8 value)
+void LCD_RD(U8 value)
 {
 	Lcd_RD = value;
 }
-void LCD_CLK(u8 value)
+void LCD_CLK(U8 value)
 {
 	Lcd_CLK = value;
 }
-void LCD_SDA(u8 value)
+void LCD_SDA(U8 value)
 {
 	Lcd_SDA= value;
 }
-void LCD_WData(u8 value)
+void LCD_WData(U8 value)
 {
 	unsigned char i;
 	for(i=0;i<8;i++)
@@ -61,13 +108,13 @@ void LCD_WData(u8 value)
 		LCD_CLK(1);
 	}
 }
-void TransData(u8 value,u8 RD)
+void TransData(U8 value,U8 RD)
 {
 	LCD_RD(RD);
 	LCD_WData(value);
 }	
 
-void PageSet(u8 page,u8 column)//page = y,column = x
+void PageSet(U8 page,U8 column)//page = y,column = x
 {
 	TransData(0xb0+page,0);
 	TransData(((column&0xf0)>>4)|0x10,0);
@@ -128,9 +175,9 @@ void Lcd_Init(void)
 	Lcdclear();//清除显示
 }
 
-void LcdDisChar(u8 xPos,u8 yPos,u8 zknum,u8 *zkzip)
+void LcdDisChar(U8 xPos,U8 yPos,U8 zknum,U8 *zkzip)
 {
-	u8 i;
+	U8 i;
 	PageSet(yPos,xPos);
 	for(i=0; i<zknum;i++)
 	{
@@ -153,11 +200,11 @@ void LcdDisChar(u8 xPos,u8 yPos,u8 zknum,u8 *zkzip)
 * Return         : 0：Lcd设置超出。1：设置正确。
 *******************************************************************************/
 
-u8 LcdDisplay_HZ(u8 xPos,u8 yPos,u8 *GBCodeptr)
+U8 LcdDisplay_HZ(U8 xPos,U8 yPos,U8 *GBCodeptr)
 {
-	u8 msb,lsb,zknum;
-	u8 zkzip[32];  //读取字库数据的缓存区
-	u32 offset;	   //字库地址索引
+	U8 msb,lsb,zknum;
+	U8 zkzip[32];  //读取字库数据的缓存区
+	U32 offset;	   //字库地址索引
 	
 	LCD_CS(0);
 	if(xPos>=LCD_X_Parameter || yPos>=LCD_Y_Parameter) return 0 ;  //超范围退出
@@ -166,7 +213,7 @@ u8 LcdDisplay_HZ(u8 xPos,u8 yPos,u8 *GBCodeptr)
 	if (msb>128 && lsb>128)	//表明为汉字
 	{
 		if(xPos+16>LCD_X_Parameter || yPos+16>LCD_Y_Parameter)return 0; //超范围退出
-		offset =ZK_InitAddr+((u32)((msb-0xA1)*94+(lsb-0xa1))*32);//具体算法详细查看字库原理
+		offset =ZK_InitAddr+((U32)((msb-0xA1)*94+(lsb-0xa1))*32);//具体算法详细查看字库原理
 		zknum =16;	//汉字为16*16的字库
 	}
 	else	        //否则为ASCII码
@@ -191,9 +238,9 @@ u8 LcdDisplay_HZ(u8 xPos,u8 yPos,u8 *GBCodeptr)
 * Output         : None	
 * Return         : None
 *******************************************************************************/
-void LcdDisplay_Chinese(u8 xPos,u8 yPos,u8 *GBCodeptr)
+void LcdDisplay_Chinese(U8 xPos,U8 yPos,U8 *GBCodeptr)
 {
-	u8 i, len;
+	U8 i, len;
 	len =  strlen((const char*)GBCodeptr);
 	for(i=0;i<len;i++)
 	{
@@ -211,9 +258,9 @@ void LcdDisplay_Chinese(u8 xPos,u8 yPos,u8 *GBCodeptr)
 * Output         : None	
 * Return         : None
 *******************************************************************************/
-void LcdDisplay_char(u8 xPos,u8 yPos,u8 *GBCodeptr)
+void LcdDisplay_char(U8 xPos,U8 yPos,U8 *GBCodeptr)
 {
-	u8 i, len;
+	U8 i, len;
 	len =  strlen((const char*)GBCodeptr);
 	for(i=0;i<len;i++)
 	{

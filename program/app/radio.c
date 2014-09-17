@@ -5,45 +5,44 @@ void initialize(void) config the system initial the global variable
 author; Wuliang
 system config list
 ******************************************************************************/
-#include "si4844_config.h"
+//#include <C8051F340.H>
+//#include "si4844_config.h"
 //C8051 初始化头文件
 #include "init_device.h"
 //OLED 头文件
 #include "OLED.h"
-#include "OLED_Flash.h"
 #include "OLED_codetab.h"
-//
 #include "delay.h"
 /*****************************************************************************/
-extern u8 state_machine;
-extern u8 flag_tuner_irq;
+//extern u8 state_machine;
+//extern u8 flag_tuner_irq;
 void main(void)
 {
         //configure the mcu system registers
         Init_Device();
 		//EA = 1;
-    //Lcd_Init();
-	//FlashInit();
+    Lcd_Init();
+	FlashInit();
 	
-	//LCDFill(0xff);
+	LCDFill(0xff);
 	DelayS(2);
-	//Lcdclear();
+	Lcdclear();
 	
-	//LcdDisplay_Chinese(8,0,"成都惠特自动化");
-	//LcdDisplay_Chinese(0,2,"显示屏带中文字库");
-	//LcdDisplay_Chinese(0,4,"独家提供给力资料");
-	//LcdDisplay_Chinese(0,6,"欢迎选购量大从优");
+	LcdDisplay_Chinese(8,0,"成都惠特自动化");
+	LcdDisplay_Chinese(0,2,"显示屏带中文字库");
+	LcdDisplay_Chinese(0,4,"独家提供给力资料");
+	LcdDisplay_Chinese(0,6,"欢迎选购量大从优");
 	DelayS(2);    
 	
 	
 	//initialize the variables and the peripherals
-        initialize(); 
-        i2c_reset_enable();
-        state_machine = SM_RADIO_RESET;
-        wait_ms(10);   
+        //initialize(); 
+        //i2c_reset_enable();
+        //state_machine = SM_RADIO_RESET;
+        //wait_ms(10);   
         while(1) {
                 //key_scanning();
-                parse_atdd_status();
+               // parse_atdd_status();
         }
 
 }
@@ -54,10 +53,10 @@ void main(void)
 void initialize()
 {
         // take the si484x into reset status
-        i2c_reset_disable();
+        //i2c_reset_disable();
         // config the lcd driver
 //      lcd_initial();
-        flag_tuner_irq = 0;
+        //flag_tuner_irq = 0;
 }
 /********************************************************************************
  * this function scan the key matrix and get the key code if any key is pressed
@@ -123,77 +122,6 @@ void initialize()
                 break;
         }
 }*/
-#if 0
-/**********************************************************************************
- * this function enter radio mode or exit radio
- * *******************************************************************************/
-void switch_power()
-{
-        if(state_machine & SM_RADIO_READY) {
-                state_machine = SM_POWER_OFF;
-                i2c_reset_disable();
-        } else {
-                state_machine = SM_RADIO_RESET;
-                i2c_reset_enable();
-        }
-}
-/**********************************************************************************
- * this function switch band
- * *******************************************************************************/
-void adjust_band(void)
-{
-        if(state_machine & SM_RADIO_READY) {
-                band_index++;
-                if(band_index > 40) {
-                       band_index = 0;
-                } 
-                i2c_reset();
-                state_machine = SM_RADIO_RESET;        
-        }        
-}
-/**********************************************************************************
- * this function adjust volume
- * *******************************************************************************/
-void adjust_volume(u8 direction)
-{
-        if(state_machine & SM_RADIO_READY) {
-                if (direction == 0) {
-                        if(volume) {
-                                volume--;
-                        }
-                } else {
-                        if(volume < 63) {
-                                volume++;
-                        }
-                }
-                si48xx_set_volume(volume);
-                state_machine = SM_RADIO_VOLUME;     
-        }
-}
-/***************************************************************
- * this function adjust bass treble
- * ************************************************************/
-void adjust_bass_treble(u8 direction)
-{
-        if(state_machine & SM_RADIO_READY) {
-                if (direction == 0) {
-                        if(bass_treble) {
-                                bass_treble--;
-                        }
-                } else {
-                        if(bass_treble < 8) {
-                                bass_treble++;
-                        }
-                }
-                si48xx_set_bass_treble(bass_treble);
-                state_machine = SM_RADIO_BASS_TREBLE;     
-        }
-}
-
-
-#endif
-
-
 
 
 
