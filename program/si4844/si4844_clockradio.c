@@ -14,6 +14,8 @@
 #include "string.h"
 #include "stdio.h"
 #include "OLED.h"
+#include "math.h"
+#include "string.h"
 /*****************************************************************************/
 #define FM      0
 #define AM      1
@@ -93,6 +95,49 @@ U8 data fm_bass_treble;
 U8 data am_bass_treble;
 U8 data volume;
 
+code char sBandInfo[82][32] = {
+	"FM1:87-108M","75u,S6,R20",//0
+	"FM1:87-108M","75u,S12,R28",//1
+	"FM1:87-108M","50u,S6,R20",//2
+	"FM1:87-108M","50u,S12,R28",//3
+	"FM2:86.5-109M","75u,S6,R20",//4
+	"FM2:86.5-109M","75u,S12,R28",//5
+	"FM2:86.5-109M","50u,S6,R20",//6
+	"FM2:86.5-109M","50u,S12,R28",//7
+	"FM3:87.3-108.25M","75u,S6,R20",//8
+	"FM3:87.3-108.25M","75u,S12,R28",//9
+	"FM3:87.3-108.25M","50u,S6,R20",//10
+	"FM3:87.3-108.25M","50u,S12,R28",//11
+	"FM4:76-90M","75u,S6,R20",//12
+	"FM4:76-90M","75u,S12,R28",//13
+	"FM4:76-90M","50u,S6,R20",//14
+	"FM4:76-90M","50u,S12,R28",//15
+	"FM5:64-87M","75u,S6,R20",//16
+	"FM5:64-87M","75u,S12,R28",//17
+	"FM5:64-87M","50u,S6,R20",//18
+	"FM5:65-87M","50u,S12,R28",//19
+	"AM1:520-1710K","Step:10K",//20
+	"AM2:522-1620K","Step:9K",//21
+	"AM3:504-1665K","Step:9K",//22
+	"AM4:520-1730K","Step:10K",//23
+	"AM5:510-1750K","Step:10K",//24
+	"SW1:5.6-6.4M","Step:5K",//25
+	"SW2:5.9-5.62M","Step:5K",//26
+	"SW3:6.8-7.6M","Step:5K",//27
+	"SW4:7.1-7.6M","Step:5K",//28
+	"SW5:9.2-10M","Step:5K",//29
+	"SW6:9.2-9.9M","Step:5K",//30
+	"SW7:11.45-12.25M ","Step:5K",//31
+	"SW8:11.6-12.2M","Step:5K",//32
+	"SW9:13.4-14.2M","Step:5K",//33
+	"SW10:13.57-13.87M","Step:5K",//,34
+	"SW11:15-15.9M","Step:5K",//35
+	"SW12:15.1-15.8M","Step:5K",//36
+	"SW13:17.1-18M","Step:5K",//37
+	"SW14:17.47-17.9M","Step:5K"//38
+	"SW15:21.2-22M","Step:5K"//39
+	"SW16:21.45-21.85M","Step:5K"//40
+};
 extern U8 Bcd2Char(U8 bcd);
 /*****************************************************************************/
 void INT0_irq() interrupt 0
@@ -103,6 +148,39 @@ void INT0_irq() interrupt 0
 	}
 }
 
+float fm_bcdfreq2float(U8 bcd_l, U8 bcd_h)
+{//FM BCD转换字符串 
+	float temp;
+	temp = (bcd_l & 0x0f) / 10.0;
+	temp += ((bcd_l >> 4) & 0x0f);
+	temp += (bcd_h & 0x0f) * 10;
+	temp += ((bcd_h >> 4) & 0x0f) * 100;
+	return temp;
+}
+float am_bcdfreq2float(U8 bcd_l, U8 bcd_h)
+{//AM
+	float temp;
+	temp = (bcd_l & 0x0f);
+	temp += ((bcd_l >> 4) & 0x0f) * 10;
+	temp += (bcd_h & 0x0f) * 100;
+	temp += ((bcd_h >> 4) & 0x0f) * 1000;
+	return temp;
+}
+float sw_bcdfreq2float(U8 bcd_l, U8 bcd_h)
+{//SW
+	float temp;
+	U8	err;
+	temp = (bcd_l & 0x0f) / 100.0;
+	temp += ((bcd_l >> 4) & 0x0f) / 10.0;
+	temp += (bcd_h & 0x0f);
+	err = ((bcd_h >> 4) & 0x0f);
+	if(err >= 8)
+	{
+		err -= 8;
+	}
+	temp += err * 10;
+	return temp;
+}
 void si4844_initialize(void)
 { 
 	si4844_i2c_reset_disable();//take the si484x into reset status
@@ -209,7 +287,8 @@ void parse_atdd_status()
 {
 	U8 idata atdd_status[4];     
 	S8 lcdstring[64];
-	U32 freq;
+	float ftemp;
+	//S8 ctemp;
 	if( flag_tuner_irq ) 
 	{
 		flag_tuner_irq = 0;
@@ -249,20 +328,44 @@ void parse_atdd_status()
 				}
 				freq_bcd[0] = atdd_status[2];
                 freq_bcd[1] = atdd_status[3];
-				//BCD转10进制
-				freq = (Bcd2Char(freq_bcd[0]) << 8);
-				freq += Bcd2Char(freq_bcd[1]);
-				sprintf( lcdstring, "F=%X", atdd_status[2]);
-				LcdDisplay_char(0, 0, lcdstring);
-				memset( lcdstring, 0, sizeof(lcdstring));
-				sprintf( lcdstring, "Freq=%X", atdd_status[3]);
-				LcdDisplay_char(0, 5, lcdstring);
-				memset( lcdstring, 0, sizeof(lcdstring));
+				switch(band_mode)
+				{
+					case FM:
+					{
+						freq_bcd[0] = atdd_status[2];
+						freq_bcd[1] = atdd_status[3];
+						ftemp = fm_bcdfreq2float(freq_bcd[1],freq_bcd[0]);
+						memset( lcdstring, 0, sizeof(lcdstring));
+						sprintf(lcdstring, "Freq:%05.1fMHz", ftemp);
+						LcdDisplay_char(0, 4, lcdstring);
+						break;
+					}
+					case AM:
+					{
+						freq_bcd[0] = atdd_status[2];
+						freq_bcd[1] = atdd_status[3];
+						ftemp = am_bcdfreq2float(freq_bcd[1],freq_bcd[0]);
+						memset( lcdstring, 0, sizeof(lcdstring));
+						sprintf(lcdstring, "Freq:%04.0fKHz", ftemp);
+						LcdDisplay_char(0, 4, lcdstring);
+						break;
+					}
+					case SW:
+					{
+						freq_bcd[0] = atdd_status[2];
+						freq_bcd[1] = atdd_status[3];
+						ftemp = sw_bcdfreq2float(freq_bcd[1],freq_bcd[0]);
+						memset( lcdstring, 0, sizeof(lcdstring));
+						sprintf(lcdstring, "Freq:%05.2fMHz", ftemp);
+						LcdDisplay_char(0, 4, lcdstring);
+						break;
+					}
+					default:break;
+				}
 			}
 		} 
 		else
 		{
-			band_index = 2;
 		}
 		if(atdd_status[0] & HOSTRST)
 		{// status.6 1--> need reset the tune
@@ -278,15 +381,28 @@ void parse_atdd_status()
 }
 void config_tune(void)
 {
+	//确定波段 
+	if(band_index <= 19)
+	{
+		band_mode = FM;
+	}
+	else if(band_index <= 24)
+	{
+		band_mode = AM;
+	}
+	else
+	{
+		band_mode = SW;
+	}
+	
 	if( band_mode == FM) 
 	{
 		atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,FM_BAND_BOTTOM,FM_BAND_TOP,FM_BAND_SPACING);
-		//atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,FM_BAND_BOTTOM,FM_BAND_TOP,0);
 		// the fist power up after reset,wait 100ms
 		// for the crystal stable
 		if(state_machine == SM_RADIO_RESET) 
 		{
-			DelayMs(500);
+			DelayMs(600);
 		}
 		config_fm();
 	}
@@ -295,7 +411,7 @@ void config_tune(void)
 			// the fist power up after reset,wait 100ms
 			// for the crystal stable
 			if(state_machine == SM_RADIO_RESET) {
-					DelayMs(100);
+					DelayMs(600);
 			}
 			config_am();
 	}
@@ -304,10 +420,13 @@ void config_tune(void)
 			// the fist power up after reset,wait 100ms
 			// for the crystal stable
 			if(state_machine == SM_RADIO_RESET) {
-					DelayMs(100);
+					DelayMs(600);
 			}
 			config_sw();
 	}
+	//显示波段
+	LcdDisplay_char(0, 0, &sBandInfo[((band_index * 2) + 0)][0]);
+	LcdDisplay_char(0, 2, &sBandInfo[((band_index * 2) + 1)][0]);
 }
 /***************************************************
  * config fm band
@@ -346,8 +465,8 @@ void config_fm()
  * *************************************************/
 void config_am()
 {
-        atdd_set_bass_treble(am_bass_treble);
-        atdd_set_volume(volume);
+        //atdd_set_bass_treble(am_bass_treble);
+        //atdd_set_volume(volume);
 }
 /***************************************************
  * config sw band,initial volume ,bass/treble and tuning preference
@@ -356,8 +475,8 @@ void config_am()
 #define SW_ADJPT_ATTENUATION_DISABLE 0
 void config_sw()
 {
-        atdd_set_bass_treble(am_bass_treble);
-        atdd_set_volume(volume);
+        //atdd_set_bass_treble(am_bass_treble);
+        //atdd_set_volume(volume);
         atdd_audio_mode(0,SW_ADJPT_ATTENUATION_DISABLE,0,0);
 }
 //-----------------------------------------------------------------------------
