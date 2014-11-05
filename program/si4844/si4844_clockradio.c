@@ -11,6 +11,9 @@
 #include "si4844_i2c.h"
 #include "delay.h"
 #include "stddef.h"
+#include "string.h"
+#include "stdio.h"
+#include "OLED.h"
 /*****************************************************************************/
 #define FM      0
 #define AM      1
@@ -32,12 +35,7 @@
 #define XOSCEN          1
 //0--> wait 600ms for crystal oscillator setup, for normal crystal
 //1--> wait 850ms for crystal oscillator setup, for worse crystal which the setup time is long
-#define XOWAIT_LONG     0
-
-
-
-
-
+#define XOWAIT_LONG     1
 
 #define FM_MONO         0x04
 #define HOSTRST         0x40
@@ -48,15 +46,10 @@
 #define TUNERPRI        0x02
 #define HOSTBAND        0x01
 
-//define the state machine constant
-#define	SM_RADIO_READY 				0x80
-#define	SM_RADIO_RESET 				0x81
-#define	SM_RADIO_POWERUP 			0x82
-#define SM_POWER_OFF				0x83
 /*********************************************************************
  * this function initial the tuner after powerup command
  * *******************************************************************/
-#define FM_BAND_TOP     10900
+#define FM_BAND_TOP     10800
 #define FM_BAND_BOTTOM  8750
 #define FM_BAND_SPACING 10
 
@@ -85,28 +78,38 @@
  * define some global variable
  * ***************************************************************/
 
-U8 state_machine;
-U8 band_index;
-U8 band_mode;
-U8 flag_tuner_irq;
-U8 flag_station;
-U8 flag_stereo;
-U8 freq_bcd[2];
+U8 data state_machine = 0;
+U8 data band_index = 0;
+U8 data band_mode;
+U8 data flag_tuner_irq;
+U8 data flag_station;
+U8 data flag_stereo;
+U8 data freq_bcd[2];
 const U8 code max_vol_list[9] = {59,60,61,62,63,62,61,60,59};
-U8 max_vol;
-bit flag_host_band;
-bit flag_tuner_pri;
-U8 fm_bass_treble;
-U8 am_bass_treble;
-U8 volume;
+U8 data max_vol;
+bit data flag_host_band;
+bit data flag_tuner_pri;
+U8 data fm_bass_treble;
+U8 data am_bass_treble;
+U8 data volume;
+
+extern U8 Bcd2Char(U8 bcd);
 /*****************************************************************************/
-void isr_irq() interrupt 0
+void INT0_irq() interrupt 0
 {//this isr set a flag, but get atdd status in main loop
-        if(state_machine & SM_RADIO_READY) {
-                flag_tuner_irq = 1;
-        }
+	if(state_machine & SM_RADIO_READY) 
+	{
+		flag_tuner_irq = 1;
+	}
 }
-#if 0
+
+void si4844_initialize(void)
+{ 
+	si4844_i2c_reset_disable();//take the si484x into reset status
+	flag_tuner_irq = 0;
+}
+
+/*
 void switch_power()
 {//this function enter radio mode or exit radio
         if(state_machine & SM_RADIO_READY) {
@@ -117,42 +120,71 @@ void switch_power()
                 i2c_reset_enable();
         }
 }
+*/
 /**********************************************************************************
  * this function switch band
  * *******************************************************************************/
-void adjust_band(void)
+void adjust_band(U8 direction)
 {
-        if(state_machine & SM_RADIO_READY) {
-                band_index++;
-                if(band_index > 40) {
-                       band_index = 0;
-                } 
-                i2c_reset();
-                state_machine = SM_RADIO_RESET;        
-        }        
+	if(state_machine & SM_RADIO_READY)
+	{
+		if(direction)
+		{
+			if(band_index < 41) 
+			{
+				band_index ++;
+			}	
+			si4844_i2c_reset();
+			state_machine = SM_RADIO_RESET;
+		}
+		else
+		{
+			if(band_index > 0)
+			{
+				band_index --;
+			}
+			si4844_i2c_reset();
+			state_machine = SM_RADIO_RESET;
+		}
+	}        
 }
 /**********************************************************************************
  * this function adjust volume
  * *******************************************************************************/
 void adjust_volume(U8 direction)
 {
-        if(state_machine & SM_RADIO_READY) {
-                if (direction == 0) {
-                        if(volume) {
-                                volume--;
-                        }
-                } else {
-                        if(volume < 63) {
-                                volume++;
-                        }
-                }
-                atdd_set_volume(volume);
-                state_machine = SM_RADIO_VOLUME;     
-        }
+	if(state_machine & SM_RADIO_READY)
+	{
+		if (direction == 0) 
+		{
+			if(volume)
+			{
+				volume--;
+			}
+		} else 
+		{
+			if(volume < 63)
+			{
+				volume++;
+			}
+			
+		}
+		if(volume == 0)
+		{
+			LM4881_MUTE = 1;
+		}
+		else 
+		{
+			LM4881_MUTE = 0;
+		}
+		atdd_set_volume(volume);
+	//state_machine = SM_RADIO_VOLUME;     
+	}
 }
 /***************************************************************
  * this function adjust bass treble
  * ************************************************************/
+/*
 void adjust_bass_treble(U8 direction)
 {
         if(state_machine & SM_RADIO_READY) {
@@ -169,21 +201,23 @@ void adjust_bass_treble(U8 direction)
                 state_machine = SM_RADIO_BASS_TREBLE;     
         }
 }
-#endif
+*/
 /************************************************************************
  * this function parse the atdd status and process the tuner requirement
  * **********************************************************************/
 void parse_atdd_status()
 {
 	U8 idata atdd_status[4];     
+	S8 lcdstring[64];
+	U32 freq;
 	if( flag_tuner_irq ) 
 	{
 		flag_tuner_irq = 0;
 		atdd_get_status(atdd_status);
+		flag_host_band = atdd_status[0] & HOSTBAND;
+		flag_tuner_pri = atdd_status[0] & TUNERPRI;
 		if(atdd_status[0] & INFORDY) 
 		{// STATUS.4 1--> BAND INDEX AND FREQUENCY INFO IS READY
-			flag_host_band = atdd_status[0] & HOSTBAND;
-			flag_tuner_pri = atdd_status[0] & TUNERPRI;
 			//check who detect the band,Host mcu or tuner itself
 			//atdd_status[0].1 0--> tuner; 1--> host mcu
 			if(!flag_host_band) 
@@ -213,17 +247,26 @@ void parse_atdd_status()
 				{
 					flag_stereo = 1;
 				}
-				freq_bcd[0] = atdd_status[1];
 				freq_bcd[0] = atdd_status[2];
+                freq_bcd[1] = atdd_status[3];
+				//BCD×ª10½øÖÆ
+				freq = (Bcd2Char(freq_bcd[0]) << 8);
+				freq += Bcd2Char(freq_bcd[1]);
+				sprintf( lcdstring, "F=%X", atdd_status[2]);
+				LcdDisplay_char(0, 0, lcdstring);
+				memset( lcdstring, 0, sizeof(lcdstring));
+				sprintf( lcdstring, "Freq=%X", atdd_status[3]);
+				LcdDisplay_char(0, 5, lcdstring);
+				memset( lcdstring, 0, sizeof(lcdstring));
 			}
 		} 
 		else
 		{
-			band_index = 0;
+			band_index = 2;
 		}
 		if(atdd_status[0] & HOSTRST)
 		{// status.6 1--> need reset the tune
-			i2c_reset();
+			si4844_i2c_reset();
 			state_machine = SM_RADIO_RESET;
 		}	
 		if(atdd_status[0] & HOSTPWRUP) 
@@ -235,34 +278,36 @@ void parse_atdd_status()
 }
 void config_tune(void)
 {
-        if( band_mode == FM) {
-                atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,FM_BAND_BOTTOM,FM_BAND_TOP,FM_BAND_SPACING);
-                // the fist power up after reset,wait 100ms
-                // for the crystal stable
-                if(state_machine == SM_RADIO_RESET) 
-				{
-              DelayMs(100);
-                }
-                config_fm();
-        }
-        if(band_mode == AM) {
-                atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,AM_BAND_BOTTOM,AM_BAND_TOP,AM_BAND_SPACING);
-                // the fist power up after reset,wait 100ms
-                // for the crystal stable
-                if(state_machine == SM_RADIO_RESET) {
-                        DelayMs(100);
-                }
-                config_am();
-        }
-        if(band_mode == SW) {
-                atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,SW_BAND_BOTTOM,SW_BAND_TOP,SW_BAND_SPACING);
-                // the fist power up after reset,wait 100ms
-                // for the crystal stable
-                if(state_machine == SM_RADIO_RESET) {
-                        DelayMs(100);
-                }
-                config_sw();
-        }
+	if( band_mode == FM) 
+	{
+		atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,FM_BAND_BOTTOM,FM_BAND_TOP,FM_BAND_SPACING);
+		//atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,FM_BAND_BOTTOM,FM_BAND_TOP,0);
+		// the fist power up after reset,wait 100ms
+		// for the crystal stable
+		if(state_machine == SM_RADIO_RESET) 
+		{
+			DelayMs(500);
+		}
+		config_fm();
+	}
+	if(band_mode == AM) {
+			atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,AM_BAND_BOTTOM,AM_BAND_TOP,AM_BAND_SPACING);
+			// the fist power up after reset,wait 100ms
+			// for the crystal stable
+			if(state_machine == SM_RADIO_RESET) {
+					DelayMs(100);
+			}
+			config_am();
+	}
+	if(band_mode == SW) {
+			atdd_power_up(XOSCEN,XOWAIT_LONG,band_index,SW_BAND_BOTTOM,SW_BAND_TOP,SW_BAND_SPACING);
+			// the fist power up after reset,wait 100ms
+			// for the crystal stable
+			if(state_machine == SM_RADIO_RESET) {
+					DelayMs(100);
+			}
+			config_sw();
+	}
 }
 /***************************************************
  * config fm band
@@ -290,10 +335,10 @@ void config_fm()
         }
         atdd_audio_mode(ADJPT_STERRO_DISABLE,FM_ADJPT_ATTENUATION_DISABLE,FM_FORCE_MONO,FM_AUDIO_MODE);
 #if  FM_AUDIO_MODE != 0
-        atdd_set_bass_treble(fm_bass_treble);
+//        atdd_set_bass_treble(fm_bass_treble);
 #endif
 #if  FM_AUDIO_MODE != 1
-        atdd_set_volume(volume);
+ //       atdd_set_volume(volume);
 #endif    
 }
 /***************************************************
@@ -320,27 +365,27 @@ void config_sw()
 //-----------------------------------------------------------------------------
 void atdd_power_up(U8 xoscen,U8 xowait,U8 band_index,U16 band_bottom,U16 band_top,U8 chspc)
 {
-	U8 idata cmd[7];   
-        U8 len;        
-        cmd[0] = ATDD_POWER_UP;  //ATDD powerup command
-        cmd[1] = band_index;
-        if( xoscen ) {
-                cmd[1] |= ATDD_XOSCEN ;   
-        }
-        if(xowait) {
-                cmd[1] |= ATDD_XOWAIT;
-        }
-        len = 2;
-        if(!flag_tuner_pri) {
-                cmd[2] = band_bottom>>8;
-                cmd[3] = band_bottom;
-                cmd[4] = band_top>>8;
-                cmd[5] = band_top;
-                cmd[6] = chspc;
-                len = 7;
-        }
-
-        write_command(len, cmd, 0, NULL);
+	U8 idata cmd[7];
+	U8 idata rsp[8];
+	U8 len;        
+	cmd[0] = ATDD_POWER_UP;  //ATDD powerup command
+	cmd[1] = band_index;
+	if( xoscen ) {
+			cmd[1] |= ATDD_XOSCEN ;   
+	}
+	if(xowait) {
+			cmd[1] |= ATDD_XOWAIT;
+	}
+	len = 2;
+	if(!flag_tuner_pri) {
+		cmd[2] = band_bottom>>8;
+		cmd[3] = band_bottom;
+		cmd[4] = band_top>>8;
+		cmd[5] = band_top;
+		cmd[6] = chspc;
+		len = 7;
+	}
+	write_command(len, cmd, 1, rsp);
 }
 
 /*******************************************************************************
@@ -400,9 +445,9 @@ void atdd_set_volume(U8 volume)
 #endif
 U8 atdd_get_actual_vol()
 {
-        U8 actual_vol;
-        actual_vol = (U8) get_property(0x4003);
-        return actual_vol;
+	U8 actual_vol;
+	actual_vol = (U8) get_property(0x4003);
+	return actual_vol;
 }
 #endif
 /****************************************************************************
@@ -410,76 +455,77 @@ U8 atdd_get_actual_vol()
  * **************************************************************************/
 void atdd_set_bass_treble(U8 tone)
 {
-        set_property(0x4002,tone);
-        #if FM_AUDIO_MODE == 3
-        if(band_mode == FM) {
-                volume = atdd_get_actual_vol();
-                max_vol = max_vol_list[tone];
-        }
-        #endif
+	set_property(0x4002,tone);
+	#if FM_AUDIO_MODE == 3
+	if(band_mode == FM) 
+	{
+		volume = atdd_get_actual_vol();
+		max_vol = max_vol_list[tone];
+	}
+	#endif
 }
 /****************************************************************************
  * this function set fm deemphasis,10B--> 75us,01B-->50us
  * **************************************************************************/
 void atdd_set_deemphasis(U8 deemphasis)
 {
-        set_property(0x1100,deemphasis);
+	set_property(0x1100,deemphasis);
 }
 /****************************************************************************
  * this function set fm softmute rate.
  * **************************************************************************/
 void atdd_set_fm_softmute_rate(U8 rate)
 {
-        set_property(0x1300,rate);
+	set_property(0x1300,rate);
 }
 /****************************************************************************
  * this function set fm softmute slope.
  * **************************************************************************/
 void atdd_set_fm_softmute_slope(U8 slope)
 {
-        set_property(0x1301,slope);
+	set_property(0x1301,slope);
 }
 /****************************************************************************
  * this function set fm softmute max attenuation
  * **************************************************************************/
 void atdd_set_fm_softmute_max_attenuation(U8 max_attn)
 {
-        set_property(0x1302,max_attn);
+	set_property(0x1302,max_attn);
 }
 /****************************************************************************
  * this function set fm softmute snr threshold
  * **************************************************************************/
 void atdd_set_fm_softmute_snr(U8 snr)
 {
-        set_property(0x1303,snr);
+	set_property(0x1303,snr);
 }
 /****************************************************************************
  * this function set am softmute rate.
  * **************************************************************************/
 void atdd_set_am_softmute_rate(U8 rate)
 {
-        set_property(0x3300,rate);
+	set_property(0x3300,rate);
 }
 /****************************************************************************
  * this function set am softmute slope.
  * **************************************************************************/
 void atdd_set_am_softmute_slope(U8 slope)
 {
-        set_property(0x3301,slope);
+	set_property(0x3301,slope);
 }
 /****************************************************************************
  * this function set am softmute max attenuation
  * **************************************************************************/
 void atdd_set_am_softmute_max_attenuation(U8 max_attn)
 {
-        set_property(0x3302,max_attn);
+	set_property(0x3302,max_attn);
 }
 /****************************************************************************
  * this function set am softmute snr threshold
  * **************************************************************************/
 void atdd_set_am_softmute_snr(U8 snr)
 {
-        set_property(0x3303,snr);
+	set_property(0x3303,snr);
 }
 /****************************************************************************
  * this function set fm stereo blend threshold for stereo indicator set to 1
@@ -570,18 +616,25 @@ void wait_cts(void)
 	do 
 	{
 		DelayUs(100);
-		i2c_read_buf(1,&status); 
+		si4844_i2c_read_buf(1,&status); 
 	} while (!(status & 0x80) && i--);
 }
 void write_command(U8 cmd_size,U8 idata *cmd_buf,U8 reply_size,U8 idata *reply)
 {
 	// It is always a good idea to check for cts prior to sending a command to the part.
 	// Write the command to the part
-	i2c_write_buf(cmd_size, cmd_buf);
+	si4844_i2c_write_buf(cmd_size, cmd_buf);
 	wait_cts();
 	if(reply_size) 
 	{// If the calling function would like to have results then read them.
-		i2c_read_buf(reply_size, reply);
+		si4844_i2c_read_buf(reply_size, reply);
 	}
 }
 
+void FM_Receiver(void)
+{
+	//Power up in Analog Mode
+	//CONFIG CMD 0xE2
+	//CONFIG_CMD 0x12
+	//CONFIG_CMD 
+}

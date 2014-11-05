@@ -18,6 +18,11 @@ void Timer_Init()
     TCON      = 0x01;
 }
 
+void Voltage_Reference_Init()
+{
+    REF0CN    = 0x08;
+}
+
 void Voltage_Regulator_Init()
 {
     REG0CN    = 0x80;
@@ -25,22 +30,22 @@ void Voltage_Regulator_Init()
 
 void Port_IO_Init()
 {
-    // P0.0  -  Skipped,     Open-Drain, Digital
+    // P0.0  -  Unassigned,  Open-Drain, Digital
     // P0.1  -  Unassigned,  Open-Drain, Digital
     // P0.2  -  Unassigned,  Open-Drain, Digital
     // P0.3  -  Unassigned,  Open-Drain, Digital
-    // P0.4  -  Unassigned,  Open-Drain, Digital
-    // P0.5  -  Unassigned,  Open-Drain, Digital
+    // P0.4  -  Unassigned,  Push-Pull,  Digital
+    // P0.5  -  Skipped,     Open-Drain, Digital
     // P0.6  -  Unassigned,  Push-Pull,  Digital
     // P0.7  -  Unassigned,  Open-Drain, Digital
 
-    // P1.0  -  Unassigned,  Open-Drain, Digital
-    // P1.1  -  Unassigned,  Push-Pull,  Digital
-    // P1.2  -  Unassigned,  Push-Pull,  Digital
-    // P1.3  -  Unassigned,  Push-Pull,  Digital
-    // P1.4  -  Unassigned,  Push-Pull,  Digital
-    // P1.5  -  Unassigned,  Push-Pull,  Digital
-    // P1.6  -  Unassigned,  Push-Pull,  Digital
+    // P1.0  -  Unassigned,  Push-Pull,  Digital
+    // P1.1  -  Unassigned,  Open-Drain, Digital
+    // P1.2  -  Unassigned,  Open-Drain, Digital
+    // P1.3  -  Unassigned,  Open-Drain, Digital
+    // P1.4  -  Unassigned,  Open-Drain, Digital
+    // P1.5  -  Unassigned,  Open-Drain, Digital
+    // P1.6  -  Unassigned,  Open-Drain, Digital
     // P1.7  -  Unassigned,  Open-Drain, Digital
 
     // P2.0  -  Unassigned,  Open-Drain, Digital
@@ -52,19 +57,20 @@ void Port_IO_Init()
     // P2.6  -  Unassigned,  Open-Drain, Digital
     // P2.7  -  Unassigned,  Open-Drain, Digital
 
-    // P3.0  -  Unassigned,  Open-Drain, Digital
-    // P3.1  -  Unassigned,  Open-Drain, Digital
-    // P3.2  -  Unassigned,  Open-Drain, Digital
-    // P3.3  -  Unassigned,  Open-Drain, Digital
+    // P3.0  -  Unassigned,  Push-Pull,  Digital
+    // P3.1  -  Unassigned,  Push-Pull,  Digital
+    // P3.2  -  Unassigned,  Push-Pull,  Digital
+    // P3.3  -  Unassigned,  Push-Pull,  Digital
     // P3.4  -  Unassigned,  Open-Drain, Digital
-    // P3.5  -  Unassigned,  Open-Drain, Digital
+    // P3.5  -  Unassigned,  Push-Pull,  Digital
     // P3.6  -  Unassigned,  Open-Drain, Digital
     // P3.7  -  Unassigned,  Open-Drain, Digital
 
-    P0MDOUT   = 0x40;
-    P1MDOUT   = 0x7E;
-    P0SKIP    = 0x01;
-    XBR1      = 0x40;
+    P0MDOUT   = 0x50;
+    P1MDOUT   = 0x01;
+    P3MDOUT   = 0x2F;
+    P0SKIP    = 0x20;
+    XBR1      = 0xC0;
 }
 
 void Oscillator_Init()
@@ -81,7 +87,8 @@ void Oscillator_Init()
 
 void Interrupts_Init()
 {
-    IT01CF    = 0x08;
+    IT01CF    = 0x05;
+    IE        = 0x01;
 }
 
 // Initialization function for device,
@@ -90,9 +97,9 @@ void Init_Device(void)
 {
     PCA_Init();
     Timer_Init();
+    Voltage_Reference_Init();
     Voltage_Regulator_Init();
     Port_IO_Init();
     Oscillator_Init();
     Interrupts_Init();
 }
-

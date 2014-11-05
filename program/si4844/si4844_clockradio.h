@@ -3,6 +3,19 @@
 /*****************************************************************************/
 #include "compiler_defs.h"
 #include "si4844_i2c.h"
+#include "c8051f340.h"
+/*****************************************************************************/
+//define the state machine constant
+#define	SM_RADIO_READY 				0x80
+#define	SM_RADIO_RESET 				0x81
+#define	SM_RADIO_POWERUP 			0x82
+#define SM_POWER_OFF				0x83
+/*****************************************************************************/
+extern U8 data state_machine;
+extern U8 data flag_tuner_irq;
+extern U8 data freq_bcd[2];
+/*****************************************************************************/
+sbit LM4881_MUTE = P0^4;
 /*****************************************************************************/
 void wait_cts(void);
 void write_command(U8 cmd_size,U8 idata *cmd_buf,U8 replay_size,U8 idata *reply);
@@ -33,5 +46,7 @@ void set_property(U16 property_id,U16 property_value);
 U16 get_property(U16 property_id);
 void atdd_get_version();
 void parse_atdd_status();
-
+void si4844_initialize(void);
+void adjust_volume(U8 direction);
+void adjust_band(U8 direction);
 #endif

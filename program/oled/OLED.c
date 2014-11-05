@@ -7,12 +7,12 @@
 #define ZK_InitAddr       		0x00000
 #define ASCII_InitAdd			0x8100
 /*****************************************************************************/
-sbit Lcd_SDA  = P1^5;//SDI
-sbit Lcd_CLK  = P1^6;//CLK
-sbit Lcd_RD   = P1^4;//D/C
-sbit Lcd_CS   = P1^3;//CS1
-sbit FLASH_CS = P1^1;//CS2
-sbit FLASH_SI = P1^2;//FSO
+sbit Lcd_SDA  = P3^1;//SDI
+sbit Lcd_CLK  = P3^0;//CLK
+sbit Lcd_RD   = P3^2;//D/C
+sbit Lcd_CS   = P3^3;//CS1
+sbit FLASH_CS = P3^5;//CS2
+sbit FLASH_SI = P3^4;//FSO
 /*****************************************************************************/
 void SPI_FLASH_CS(U8 value)
 {
