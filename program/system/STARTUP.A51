@@ -78,7 +78,7 @@ PBPSTACK        EQU     0       ; set to 1 if compact reentrant is used.
 ;
 ;   <o> PBPSTACKTOP: End address of COMPACT model stack <0x0-0xFFFF>
 ;     <i> Set the top of the stack to the highest location.
-PBPSTACKTOP     EQU     0x0FF +1     ; default 0FFH+1  
+PBPSTACKTOP     EQU     0xFF +1     ; default 0FFH+1  
 ; </h>
 ;</h>
 ;------------------------------------------------------------------------------

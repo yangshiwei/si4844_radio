@@ -33,7 +33,16 @@ void key_process(void);
 void main(void)
 {   
 	Init_Device();//configure the mcu system registers
-    DelayS(2);  
+//    LED_R = 1;
+//	LED_ER = 1;
+//	LED_OV = 1;
+//	LED_ST = 1;
+//	LED_TU = 1;
+	VOL_DEC_KEY = 1;
+	VOL_ADD_KEY = 1;
+	BAND_DEC_KEY = 1;
+	BAND_ADD_KEY = 1;
+	DelayS(2);  
 	Lcd_Init();
 	FlashInit();
 	LCDFill(0xff);
@@ -45,10 +54,7 @@ void main(void)
 	si4844_i2c_reset_enable();
     state_machine = SM_RADIO_RESET;	
 	LM4881_MUTE = 0;//打开OP
-    VOL_DEC_KEY = 1;
-	VOL_ADD_KEY = 1;
-	BAND_DEC_KEY = 1;
-	BAND_ADD_KEY = 1;
+//	LED_R = 0;//ON
 	while(1)
 	{
 		key_process();
@@ -64,6 +70,10 @@ void main(void)
  * *********************************************************************/
 void key_process(void)
 {
+	VOL_DEC_KEY = 1;
+	VOL_ADD_KEY = 1;
+	BAND_DEC_KEY = 1;
+	BAND_ADD_KEY = 1;
 	//读取按键信息 优先级 VOL- VOL+ Band- Band+
 	if(VOL_DEC_KEY == 0)
 	{//音量减小
@@ -99,15 +109,6 @@ void key_process(void)
 			Lcdclear();
 		}
 	}      
-}
-
-U8 Bcd2Char(U8 bcd)
-{//BCD码转换为CHAR
-	U8 l_temp,h_temp,temp;
-	l_temp = (bcd & 0x0f);
-	h_temp = ((bcd >> 4) & 0x0f);
-	temp = h_temp * 100 + l_temp;
-	return temp;
 }
 
 

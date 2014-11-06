@@ -16,6 +16,11 @@ extern U8 data flag_tuner_irq;
 extern U8 data freq_bcd[2];
 /*****************************************************************************/
 sbit LM4881_MUTE = P0^4;
+sbit LED_TU	= P2^1;
+sbit LED_ST	= P2^0;
+sbit LED_OV = P1^7;
+sbit LED_ER = P1^6;
+sbit LED_R	= P1^5;
 /*****************************************************************************/
 void wait_cts(void);
 void write_command(U8 cmd_size,U8 idata *cmd_buf,U8 replay_size,U8 idata *reply);

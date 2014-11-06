@@ -127,18 +127,17 @@ code char sBandInfo[82][32] = {
 	"SW4:7.1-7.6M","Step:5K",//28
 	"SW5:9.2-10M","Step:5K",//29
 	"SW6:9.2-9.9M","Step:5K",//30
-	"SW7:11.45-12.25M ","Step:5K",//31
+	"SW7:11.45-12.25M","Step:5K",//31
 	"SW8:11.6-12.2M","Step:5K",//32
 	"SW9:13.4-14.2M","Step:5K",//33
 	"SW10:13.57-13.87M","Step:5K",//,34
 	"SW11:15-15.9M","Step:5K",//35
 	"SW12:15.1-15.8M","Step:5K",//36
 	"SW13:17.1-18M","Step:5K",//37
-	"SW14:17.47-17.9M","Step:5K"//38
-	"SW15:21.2-22M","Step:5K"//39
+	"SW14:17.47-17.9M","Step:5K",//38
+	"SW15:21.2-22M","Step:5K",//39
 	"SW16:21.45-21.85M","Step:5K"//40
 };
-extern U8 Bcd2Char(U8 bcd);
 /*****************************************************************************/
 void INT0_irq() interrupt 0
 {//this isr set a flag, but get atdd status in main loop
@@ -338,10 +337,20 @@ void parse_atdd_status()
 						memset( lcdstring, 0, sizeof(lcdstring));
 						sprintf(lcdstring, "Freq:%05.1fMHz", ftemp);
 						LcdDisplay_char(0, 4, lcdstring);
+						//判断是否是立体声
+						if(flag_stereo)
+						{//立体声打开
+							//LED_ST = 0;
+						}
+						else
+						{//立体声关闭
+							//LED_ST = 1;
+						}
 						break;
 					}
 					case AM:
 					{
+						//LED_ST = 1;
 						freq_bcd[0] = atdd_status[2];
 						freq_bcd[1] = atdd_status[3];
 						ftemp = am_bcdfreq2float(freq_bcd[1],freq_bcd[0]);
@@ -352,6 +361,7 @@ void parse_atdd_status()
 					}
 					case SW:
 					{
+						//LED_ST = 1;
 						freq_bcd[0] = atdd_status[2];
 						freq_bcd[1] = atdd_status[3];
 						ftemp = sw_bcdfreq2float(freq_bcd[1],freq_bcd[0]);
