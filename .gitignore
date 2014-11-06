@@ -37,3 +37,4 @@ Icon
 /program/list
 /program/build
 /program/*.bak
+/program/*.test
