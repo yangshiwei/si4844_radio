@@ -37,7 +37,7 @@
 #define XOSCEN          1
 //0--> wait 600ms for crystal oscillator setup, for normal crystal
 //1--> wait 850ms for crystal oscillator setup, for worse crystal which the setup time is long
-#define XOWAIT_LONG     1
+#define XOWAIT_LONG     0
 
 #define FM_MONO         0x04
 #define HOSTRST         0x40
@@ -70,7 +70,7 @@
  * *************************************************/
 #define ADJPT_STERRO_DISABLE 0
 #define FM_ADJPT_ATTENUATION_DISABLE 0
-#define FM_AUDIO_MODE 3
+#define FM_AUDIO_MODE 0
 #define FM_FORCE_MONO 0//1:de-emphasis 50us 2:de-emphasis 75us
 #define FM_DE_EMPHASIS 2
 #define FM_BLEND_MONO  8
@@ -82,7 +82,7 @@
 
 U8 data state_machine = 0;
 U8 data band_index = 0;
-U8 data band_mode;
+U8 data band_mode = FM;
 U8 data flag_tuner_irq;
 U8 data flag_station;
 U8 data flag_stereo;
@@ -93,7 +93,7 @@ bit data flag_host_band;
 bit data flag_tuner_pri;
 U8 data fm_bass_treble;
 U8 data am_bass_treble;
-U8 data volume;
+U8 data volume = 50;
 
 code char sBandInfo[82][32] = {
 	"FM1:87-108M","75u,S6,R20",//0
@@ -207,7 +207,7 @@ void adjust_band(U8 direction)
 	{
 		if(direction)
 		{
-			if(band_index < 41) 
+			if(band_index < 40) 
 			{
 				band_index ++;
 			}	
@@ -230,6 +230,7 @@ void adjust_band(U8 direction)
  * *******************************************************************************/
 void adjust_volume(U8 direction)
 {
+	S8 lcdstring[64];
 	if(state_machine & SM_RADIO_READY)
 	{
 		if (direction == 0) 
@@ -255,6 +256,10 @@ void adjust_volume(U8 direction)
 			LM4881_MUTE = 0;
 		}
 		atdd_set_volume(volume);
+		//刷新SOFT音量显示
+		memset( lcdstring, 0, sizeof(lcdstring));
+		sprintf(lcdstring, "Vol:%2d        ", (int)volume);
+		LcdDisplay_char(0, 6, lcdstring);
 	//state_machine = SM_RADIO_VOLUME;     
 	}
 }
@@ -319,6 +324,7 @@ void parse_atdd_status()
 				if(atdd_status[0] & STATION) 
 				{
 					flag_station = 1;
+					
 				}
 				flag_stereo = 0;
 				if(atdd_status[0] & STEREO) 
@@ -340,17 +346,17 @@ void parse_atdd_status()
 						//判断是否是立体声
 						if(flag_stereo)
 						{//立体声打开
-							//LED_ST = 0;
+							LED_ST = 0;
 						}
 						else
 						{//立体声关闭
-							//LED_ST = 1;
+							LED_ST = 1;
 						}
 						break;
 					}
 					case AM:
 					{
-						//LED_ST = 1;
+						LED_ST = 1;
 						freq_bcd[0] = atdd_status[2];
 						freq_bcd[1] = atdd_status[3];
 						ftemp = am_bcdfreq2float(freq_bcd[1],freq_bcd[0]);
@@ -361,7 +367,7 @@ void parse_atdd_status()
 					}
 					case SW:
 					{
-						//LED_ST = 1;
+						LED_ST = 1;
 						freq_bcd[0] = atdd_status[2];
 						freq_bcd[1] = atdd_status[3];
 						ftemp = sw_bcdfreq2float(freq_bcd[1],freq_bcd[0]);
@@ -371,6 +377,17 @@ void parse_atdd_status()
 						break;
 					}
 					default:break;
+				}
+				memset( lcdstring, 0, sizeof(lcdstring));
+				sprintf(lcdstring, "Vol:%2d", (int)volume);
+				LcdDisplay_char(0, 6, lcdstring);
+				if(flag_station)
+				{
+					LED_TU = 0;
+				}
+				else
+				{
+					LED_TU = 1;
 				}
 			}
 		} 
@@ -435,6 +452,7 @@ void config_tune(void)
 			config_sw();
 	}
 	//显示波段
+	Lcdclear();
 	LcdDisplay_char(0, 0, &sBandInfo[((band_index * 2) + 0)][0]);
 	LcdDisplay_char(0, 2, &sBandInfo[((band_index * 2) + 1)][0]);
 }
@@ -444,25 +462,15 @@ void config_tune(void)
  *      de-emphasis
  *      blend_mono,band_stereo,band_separation
  * *************************************************/
-#define ADJPT_STERRO_DISABLE 0
-#define FM_ADJPT_ATTENUATION_DISABLE 0
-#define FM_AUDIO_MODE 3
-#define FM_FORCE_MONO 0
-//1:de-emphasis 50us
-//2:de-emphasis 75us
-#define FM_DE_EMPHASIS 2
-#define FM_BLEND_MONO  8
-#define FM_BLEND_STEREO 49
-#define FM_SEPARATION 0x9F
 void config_fm()
 {
-        if(!flag_tuner_pri) {
-                atdd_set_deemphasis(FM_DE_EMPHASIS);
-                atdd_set_rssi_blend_mono(FM_BLEND_MONO);
-                atdd_set_rssi_blend_stereo(FM_BLEND_STEREO);
-                atdd_set_stereo_separation(FM_SEPARATION);
-        }
-        atdd_audio_mode(ADJPT_STERRO_DISABLE,FM_ADJPT_ATTENUATION_DISABLE,FM_FORCE_MONO,FM_AUDIO_MODE);
+//        if(!flag_tuner_pri) {
+//                atdd_set_deemphasis(FM_DE_EMPHASIS);
+//                atdd_set_rssi_blend_mono(FM_BLEND_MONO);
+//                atdd_set_rssi_blend_stereo(FM_BLEND_STEREO);
+//                atdd_set_stereo_separation(FM_SEPARATION);
+//        }
+	atdd_audio_mode(ADJPT_STERRO_DISABLE,FM_ADJPT_ATTENUATION_DISABLE,FM_FORCE_MONO,FM_AUDIO_MODE);
 #if  FM_AUDIO_MODE != 0
 //        atdd_set_bass_treble(fm_bass_treble);
 #endif
@@ -760,10 +768,3 @@ void write_command(U8 cmd_size,U8 idata *cmd_buf,U8 reply_size,U8 idata *reply)
 	}
 }
 
-void FM_Receiver(void)
-{
-	//Power up in Analog Mode
-	//CONFIG CMD 0xE2
-	//CONFIG_CMD 0x12
-	//CONFIG_CMD 
-}

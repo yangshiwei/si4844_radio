@@ -44,12 +44,12 @@ void Port_IO_Init()
     // P1.2  -  Unassigned,  Open-Drain, Digital
     // P1.3  -  Unassigned,  Open-Drain, Digital
     // P1.4  -  Unassigned,  Open-Drain, Digital
-    // P1.5  -  Unassigned,  Push-Pull,  Digital
-    // P1.6  -  Unassigned,  Push-Pull,  Digital
-    // P1.7  -  Unassigned,  Push-Pull,  Digital
+    // P1.5  -  Unassigned,  Open-Drain, Digital
+    // P1.6  -  Unassigned,  Open-Drain, Digital
+    // P1.7  -  Unassigned,  Open-Drain, Digital
 
-    // P2.0  -  Unassigned,  Push-Pull,  Digital
-    // P2.1  -  Unassigned,  Push-Pull,  Digital
+    // P2.0  -  Unassigned,  Open-Drain, Digital
+    // P2.1  -  Unassigned,  Open-Drain, Digital
     // P2.2  -  Unassigned,  Open-Drain, Digital
     // P2.3  -  Unassigned,  Open-Drain, Digital
     // P2.4  -  Unassigned,  Open-Drain, Digital
@@ -67,8 +67,7 @@ void Port_IO_Init()
     // P3.7  -  Unassigned,  Open-Drain, Digital
 
     P0MDOUT   = 0x50;
-    P1MDOUT   = 0xE1;
-    P2MDOUT   = 0x03;
+    P1MDOUT   = 0x01;
     P3MDOUT   = 0x2F;
     P0SKIP    = 0x20;
     XBR1      = 0xC0;
